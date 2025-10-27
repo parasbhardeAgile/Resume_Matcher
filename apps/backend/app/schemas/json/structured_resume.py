@@ -9,6 +9,7 @@ SCHEMA = {
         "portfolio": "string",
         "location": {"city": "string", "country": "string"},
     },
+    "Profile Summary": "Optional[string]",
     "Experiences": [
         {
             "jobTitle": "string",
@@ -38,6 +39,19 @@ SCHEMA = {
             "date": "YYYY-MM-DD | null",
             "link": "string | null",
             "description": "string | null",
+        }
+    ],
+    "Certifications": [
+        {
+            "name": "Optional[string]",
+            "issuer": "Optional[string]",
+            "dateObtained": "Optional[YYYY-MM or MM/YYYY]" 
+        }
+    ],
+    "Languages": [
+        {
+            "languageName": "Optional[string]",
+            "proficiency": "Optional[string]" 
         }
     ],
     "Achievements": ["string", "..."],

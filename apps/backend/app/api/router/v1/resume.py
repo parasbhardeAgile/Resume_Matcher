@@ -1,6 +1,6 @@
 import logging
 import traceback
-
+import uuid
 from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -26,6 +26,7 @@ from app.services import (
     JobParsingError,
     ResumeKeywordExtractionError,
     JobKeywordExtractionError,
+    AtsScoringService,
 )
 from app.schemas.pydantic import ResumeImprovementRequest
 
@@ -284,4 +285,105 @@ async def get_resume(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error fetching resume data",
+        )
+    
+@resume_router.post(
+    "/upload-and-score-ats", # New, specific path
+    summary="Upload resume, parse, calculate ATS score, return score immediately (DB-less).",
+    tags=["ATS Scoring"] # Optional: Add a tag for better OpenAPI docs grouping
+)
+async def upload_and_score_ats( # New function name
+    request: Request,
+    file: UploadFile = File(...),
+    # db: AsyncSession = Depends(get_db_session), # NO database dependency here
+):
+    """
+    Accepts PDF/DOCX (max 2MB), converts to text, extracts structured data,
+    calculates an ATS score based on structure/content, and returns the score immediately.
+    Does NOT store data in the database.
+    """
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    logger.info(f"[{request_id}] Received request for ATS scoring: {file.filename}")
+
+    # --- File Validation Logic (Keep as before) ---
+    allowed_content_types = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
+    if file.content_type not in allowed_content_types:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file type...")
+
+    MAX_FILE_SIZE = 2 * 1024 * 1024
+    file_size = getattr(file, 'size', None)
+    if file_size and file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File size exceeds 2.0MB.")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file.")
+    if len(file_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File size exceeds 2.0MB.")
+    # --- End File Validation Logic ---
+
+    try:
+        # 1. Parse the resume (using the DB-less ResumeService)
+        # Instantiate ResumeService without db
+        resume_service = ResumeService()
+        logger.info(f"[{request_id}] Parsing resume: {file.filename}")
+        # Call the refactored parse_resume method
+        text_content, structured_data = await resume_service.parse_resume(
+            file_bytes=file_bytes,
+            file_type=file.content_type,
+            filename=file.filename,
+        )
+        # Check if structured_data is None (though parse_resume should raise error)
+        if structured_data is None:
+             logger.error(f"[{request_id}] Parsing returned None for structured_data unexpectedly.")
+             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to parse resume structure.")
+        logger.info(f"[{request_id}] Resume parsed successfully.")
+
+        # 2. Calculate ATS Score (using the DB-less AtsScoringService)
+        # Instantiate AtsScoringService without db
+        ats_scoring_service = AtsScoringService()
+        # Generate a temporary ID or use filename for context in response
+        temp_resume_id = f"upload_{file.filename}_{uuid.uuid4()}"
+        logger.info(f"[{request_id}] Calculating ATS score for {temp_resume_id}")
+        ats_result = ats_scoring_service.calculate_ats_score(
+            resume_id=temp_resume_id, # Pass a reference ID
+            processed_resume_data=structured_data # Pass the dictionary directly
+        )
+        logger.info(f"[{request_id}] ATS score calculated: {ats_result.get('ats_score')}")
+
+        # 3. Return the ATS score result directly
+        return JSONResponse(
+            content={
+                "message": f"File {file.filename} processed and ATS score calculated.",
+                "request_id": request_id,
+                "ats_score_result": ats_result,
+                # Optionally add parsed_data if needed by frontend, but can be large
+                # "parsed_data": structured_data
+            },
+            status_code=status.HTTP_200_OK
+        )
+
+    # --- Exception Handling (Keep similar, adjust details) ---
+    except ResumeValidationError as e:
+        logger.warning(f"[{request_id}] Resume parsing/validation failed for {file.filename}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e), # The error from the service is already user-friendly
+        )
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Error processing file {file.filename}: {str(e)} - traceback: {traceback.format_exc()}"
+        )
+        # Check if it's a file conversion error we added custom messages for
+        if "File conversion failed" in str(e) or "DOCX file processing failed" in str(e):
+             detail_msg = str(e) # Use the specific conversion error
+        else:
+             detail_msg = f"An unexpected error occurred while processing the resume. Please try again."
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail_msg,
         )

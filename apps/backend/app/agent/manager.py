@@ -11,6 +11,7 @@ class AgentManager:
                  model: str = settings.LL_MODEL,
                  model_provider: str = settings.LLM_PROVIDER
                  ) -> None:
+        
         match strategy:
             case "md":
                 self.strategy = MDWrapper()
@@ -44,6 +45,14 @@ class AgentManager:
                 model = opts.get("model", self.model)
                 return OllamaProvider(model_name=model,
                                       opts=opts)
+            case 'gemini':
+                from .providers.gemini import GeminiProvider
+                api_key = opts.get("llm_api_key", settings.LLM_API_KEY)
+                base_url = opts.get("llm_base_url", settings.LLM_BASE_URL)
+                return GeminiProvider(model_name=self.model,
+                          api_key=api_key,
+                          api_base_url=base_url,
+                          opts=opts)
             case _:
                 from .providers.llama_index import LlamaIndexProvider
                 llm_api_key = opts.get("llm_api_key", settings.LLM_API_KEY)
@@ -59,6 +68,7 @@ class AgentManager:
         Run the agent with the given prompt and generation arguments.
         """
         provider = await self._get_provider(**kwargs)
+        
         return await self.strategy(prompt, provider, **kwargs)
 
 class EmbeddingManager:
@@ -80,6 +90,13 @@ class EmbeddingManager:
                 from .providers.ollama import OllamaEmbeddingProvider
                 model = kwargs.get("embedding_model", self._model)
                 return OllamaEmbeddingProvider(embedding_model=model)
+            case 'gemini':
+                from .providers.gemini import GeminiEmbeddingProvider
+                api_key = kwargs.get("embedding_api_key", settings.EMBEDDING_API_KEY)
+                base_url = kwargs.get("embedding_base_url", settings.EMBEDDING_BASE_URL)
+                return GeminiEmbeddingProvider(embedding_model=self._model,
+                                   api_key=api_key,
+                                   api_base_url=base_url)
             case _:
                 from .providers.llama_index import LlamaIndexEmbeddingProvider
                 embed_api_key = kwargs.get("embedding_api_key", settings.EMBEDDING_API_KEY)

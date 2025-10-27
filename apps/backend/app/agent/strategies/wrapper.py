@@ -22,18 +22,33 @@ class JSONWrapper(Strategy):
         Wrapper strategy to format the prompt as JSON with the help of LLM.
         """
         response = await provider(prompt, **generation_args)
-        response = response.strip()
-        logger.info(f"provider response: {response}")
+
+        # --- Start Modification ---
+        # Check if the response is a dictionary and extract the text content
+        if isinstance(response, dict) and 'text' in response:
+            response_text = response['text']
+        elif isinstance(response, str):
+            response_text = response
+        else:
+            logger.error(f"Unexpected response type from provider: {type(response)}")
+            raise StrategyError("Unexpected response type from provider.")
+
+        response_text = response_text.strip()
+        # --- End Modification ---
+
+        logger.info(f"provider response text: {response_text}") # Log the extracted text
 
         # 1) Try direct parse first
         try:
-            return json.loads(response)
+            # Use response_text instead of response
+            return json.loads(response_text)
         except json.JSONDecodeError:
             pass
 
         # 2) If wrapped in fenced code blocks, try all and return the first valid JSON
         #    Matches ```json\n...``` or ```\n...``` variants
-        for fence_match in FENCE_PATTERN.finditer(response):
+        # Use response_text instead of response
+        for fence_match in FENCE_PATTERN.finditer(response_text):
             fenced = fence_match.group(1).strip()
             try:
                 return json.loads(fenced)
@@ -41,11 +56,13 @@ class JSONWrapper(Strategy):
                 continue
 
         # 3) Fallback: extract the largest JSON-looking object block { ... }
-        obj_start, obj_end = response.find("{"), response.rfind("}")
+        # Use response_text instead of response
+        obj_start, obj_end = response_text.find("{"), response_text.rfind("}")
 
         candidates: List[Tuple[int, str]] = []
         if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
-            candidates.append((obj_start, response[obj_start : obj_end + 1]))
+            # Use response_text instead of response
+            candidates.append((obj_start, response_text[obj_start : obj_end + 1]))
 
         for _, candidate in candidates:
             try:
@@ -59,7 +76,8 @@ class JSONWrapper(Strategy):
 
         if candidates:
             # If we had candidates but none parsed, log the last error contextfully
-            _err_preview = response if len(response) <= 2000 else response[:2000] + "... (truncated)"
+            # Use response_text instead of response
+            _err_preview = response_text if len(response_text) <= 2000 else response_text[:2000] + "... (truncated)"
             logger.error(
                 "provider returned non-JSON. failed to parse candidate blocks - response: %s",
                 _err_preview,
@@ -68,29 +86,44 @@ class JSONWrapper(Strategy):
 
         # 4) No braces found: fail clearly
         logger.error(
-            "provider response contained no JSON object braces: %s", response
+            # Use response_text instead of response
+            "provider response contained no JSON object braces: %s", response_text
         )
         raise StrategyError("JSON parsing error: no JSON object detected in provider response")
 
-
+# --- MDWrapper remains the same ---
 class MDWrapper(Strategy):
+    # ... (keep the existing MDWrapper code) ...
     async def __call__(
         self, prompt: str, provider: Provider, **generation_args: Any
-    ) -> Dict[str, Any]:
+    ) -> str: # Changed return type hint to str
         """
         Wrapper strategy to format the prompt as Markdown with the help of LLM.
         """
         logger.info(f"prompt given to provider: \n{prompt}")
         response = await provider(prompt, **generation_args)
-        logger.info(f"provider response: {response}")
+
+        # --- Start Modification for MDWrapper ---
+        # Handle potential dictionary response for MDWrapper as well
+        if isinstance(response, dict) and 'text' in response:
+            response_text = response['text']
+        elif isinstance(response, str):
+            response_text = response
+        else:
+            logger.error(f"Unexpected response type from provider for MD: {type(response)}")
+            raise StrategyError("Unexpected response type from provider for MD.")
+        # --- End Modification for MDWrapper ---
+
+        logger.info(f"provider response: {response_text}") # Log the extracted text
         try:
-            response = (
-                "```md\n" + response + "```" if "```md" not in response else response
+            # Use response_text instead of response
+            response_text = (
+                "```md\n" + response_text + "```" if "```md" not in response_text else response_text
             )
-            return response
+            return response_text # Return the string directly
         except Exception as e:
             logger.error(
-                f"provider returned non-md. parsing error: {e} - response: {response}"
+                # Use response_text instead of response
+                f"provider returned non-md. parsing error: {e} - response: {response_text}"
             )
-            raise StrategyError(f"Markdown parsing error: {e}") from e
-
+            raise StrategyError(f"Markdown processing error: {e}") from e

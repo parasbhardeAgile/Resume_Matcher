@@ -20,7 +20,7 @@ const acceptedFileTypes = [
 ];
 
 const acceptString = acceptedFileTypes.join(',');
-const API_RESUME_UPLOAD_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/resumes/upload`; // API endpoint
+const API_RESUME_UPLOAD_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/resumes/upload-and-score-ats`; // API endpoint
 
 export default function FileUpload() {
 	const maxSize = 2 * 1024 * 1024; // 2MB
@@ -68,8 +68,8 @@ export default function FileUpload() {
 				message: `${(uploadedFile.file as FileMetadata).name} uploaded successfully!`,
 			});
 			clearErrors();
-			const encodedResumeId = encodeURIComponent(resumeId);
-			window.location.href = `/jobs?resume_id=${encodedResumeId}`;
+			// const encodedResumeId = encodeURIComponent(resumeId);
+			// window.location.href = `/jobs?resume_id=${encodedResumeId}`;
 		},
 		onUploadError: (file, errorMsg) => {
 			console.error('Upload error:', file, errorMsg);
