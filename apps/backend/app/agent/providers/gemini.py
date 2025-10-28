@@ -34,14 +34,15 @@ class GeminiProvider(Provider):
         Calls the Gemini API with a prompt and returns parsed JSON output if possible.
         """
         url = f"{self.api_base_url}/models/{self.model_name}:generateContent?key={self.api_key}"
-
+        max_tokens = self.opts.get("max_output_tokens", 8192)
+        logger.info(f"✅ GeminiProvider is using max_output_tokens: {max_tokens}")
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
                 "temperature": self.opts.get("temperature", 0.2),
                 "topK": self.opts.get("top_k", 40),
                 "topP": self.opts.get("top_p", 0.9),
-                "maxOutputTokens": 2048
+                "maxOutputTokens": max_tokens
             }
         }
 

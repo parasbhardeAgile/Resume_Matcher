@@ -15,45 +15,64 @@ class AtsScoringService:
     """
     def __init__(self):
         logger.info("ATS Scoring Service initialized (DB-less)")
-        # Expanded list based on Harvard guide examples
+        
+        # --- START UPDATED ACTION VERBS ---
+        # Combined and de-duplicated list from your original code and the provided Harvard PDF 
         self.action_verbs_list = [
-            "accomplished", "achieved", "adapted", "added", "addressed", "administered",
-            "advised", "allocated", "analyzed", "appraised", "approved", "arbitrated",
-            "arranged", "assembled", "assessed", "assigned", "assisted", "attained",
-            "audited", "authored", "balanced", "broadened", "budgeted", "calculated",
-            "cataloged", "centralized", "chaired", "changed", "clarified", "classified",
-            "coached", "collaborated", "collected", "communicated", "compiled", "completed",
-            "composed", "computed", "conceptualized", "concluded", "conducted", "consolidated",
-            "constructed", "contracted", "controlled", "convinced", "coordinated", "corresponded",
-            "counseled", "created", "critiqued", "customized", "defined", "delegated",
-            "delivered", "demonstrated", "demystified", "derived", "designed", "determined",
-            "developed", "devised", "diagnosed", "directed", "discovered", "dispatched",
-            "documented", "drafted", "earned", "edited", "educated", "enabled", "encouraged",
-            "engineered", "energized", "enlisted", "ensured", "established", "evaluated",
-            "examined", "executed", "expanded", "expedited", "explained", "extracted",
-            "fabricated", "facilitated", "familiarized", "fashioned", "forecasted", "formed",
-            "formulated", "founded", "gained", "gathered", "generated", "guided", "handled",
-            "headed", "identified", "illustrated", "impacted", "implemented", "improved",
-            "increased", "influenced", "informed", "initiated", "inspected", "installed",
-            "instituted", "instructed", "integrated", "interpreted", "interviewed", "introduced",
-            "invented", "investigated", "launched", "lectured", "led", "liaised", "maintained",
-            "managed", "marketed", "mastered", "maximized", "mediated", "minimized", "modeled",
-            "moderated", "monitored", "motivated", "negotiated", "operated", "optimized",
-            "orchestrated", "organized", "originated", "oversaw", "overhauled", "participated",
-            "performed", "persuaded", "planned", "predicted", "prepared", "presented",
-            "prioritized", "processed", "produced", "programmed", "projected", "promoted",
-            "proposed", "proved", "provided", "publicized", "purchased", "recommended",
-            "reconciled", "recorded", "recruited", "redesigned", "reduced", "referred",
-            "regulated", "rehabilitated", "reinforced", "remodeled", "reorganized", "repaired",
-            "reported", "represented", "researched", "resolved", "retrieved", "reviewed",
-            "revised", "revitalized", "scheduled", "screened", "selected", "served",
-            "set goals", "shaped", "simplified", "sold", "solved", "spoke", "spearheaded",
-            "specified", "standardized", "steered", "stimulated", "streamlined", "strengthened",
-            "structured", "studied", "suggested", "summarized", "supervised", "supported",
-            "surpassed", "surveyed", "synthesized", "systematized", "tabulated", "taught",
-            "tested", "trained", "translated", "unified", "updated", "upgraded", "utilized",
-            "validated", "verbalized", "verified", "visualized", "wrote"
-         ]
+            "accelerated", "accomplished", "achieved", "acted", "adapted", "added", 
+            "addressed", "administered", "advised", "allocated", "analyzed", "appraised", 
+            "approved", "arbitrated", "arranged", "assembled", "assessed", "assigned", 
+            "assisted", "attained", "audited", "authored", "balanced", "broadened", 
+            "budgeted", "calculated", "cataloged", "centralized", "chaired", "changed", 
+            "clarified", "classified", "coached", "collaborated", "collected", 
+            "communicated", "compiled", "completed", "composed", "computed", 
+            "conceptualized", "conceived", "concluded", "conducted", "consolidated", 
+            "constructed", "contracted", "controlled", "convinced", "coordinated", 
+            "corresponded", "counseled", "created", "critiqued", "customized", 
+            "defined", "delegated", "delivered", "demonstrated", "demystified", 
+            "derived", "designed", "determined", "developed", "devised", "diagnosed", 
+            "directed", "discovered", "dispatched", "documented", "drafted", "earned", 
+            "edited", "educated", "enabled", "encouraged", "engineered", "energized", 
+            "enhanced", "enlisted", "ensured", "established", "evaluated", "examined", 
+            "executed", "expanded", "expedited", "explained", "extracted", "fabricated", 
+            "facilitated", "familiarized", "fashioned", "forecasted", "formed", 
+            "formulated", "founded", "gained", "gathered", "generated", "guided", 
+            "handled", "headed", "identified", "illustrated", "impacted", "implemented", 
+            "improved", "increased", "influenced", "informed", "initiated", "inspected", 
+            "installed", "instituted", "instructed", "integrated", "interpreted", 
+            "interviewed", "introduced", "invented", "investigated", "launched", 
+            "lectured", "led", "liaised", "maintained", "managed", "marketed", 
+            "mastered", "maximized", "mediated", "minimized", "modeled", "moderated", 
+            "monitored", "motivated", "negotiated", "operated", "optimized", 
+            "orchestrated", "organized", "originated", "overhauled", "oversaw", 
+            "participated", "performed", "persuaded", "planned", "predicted", 
+            "prepared", "presented", "prioritized", "processed", "produced", 
+            "programmed", "projected", "promoted", "proposed", "proved", "provided", 
+            "publicized", "published", "purchased", "recommended", "reconciled", 
+            "recorded", "recruited", "redesigned", "reduced", "referred", "regulated", 
+            "rehabilitated", "reinforced", "remodeled", "reorganized", "repaired", 
+            "reported", "represented", "researched", "resolved", "retrieved", 
+            "reviewed", "revised", "revitalized", "rewrote", "scheduled", "screened", 
+            "selected", "served", "set goals", "shaped", "simplified", "sold", 
+            "solved", "spoke", "spearheaded", "specified", "standardized", "steered", 
+            "stimulated", "streamlined", "strengthened", "structured", "studied", 
+            "suggested", "summarized", "supervised", "supported", "surpassed", 
+            "surveyed", "synthesized", "systematized", "tabulated", "taught", 
+            "tested", "trained", "translated", "unified", "updated", "upgraded", 
+            "utilized", "validated", "verbalized", "verified", "visualized", "wrote"
+        ]
+        
+        # --- START OPTIMIZATIONS ---
+        # Convert to a set for much faster O(1) lookups
+        self.action_verbs_set = set(self.action_verbs_list)
+        
+        # Common adverbs that might start a bullet point
+        self.common_adverbs = set([
+            "successfully", "effectively", "consistently", "significantly", 
+            "actively", "greatly", "strongly", "directly"
+        ])
+        # --- END OPTIMIZATIONS ---
+        
         # Regex patterns
         self.number_pattern = re.compile(
              r'\d+%?|'
@@ -61,7 +80,7 @@ class AtsScoringService:
              r'\b\d+\b(?!\s*-\s*\d)(?:\s*(?:million|thousand|hundred|billion|k))?|'
              r'\b(?:over|under|approx(?:imately)?|more than|less than|up to)\s+\d+\b',
              re.IGNORECASE
-         )
+        )
         self.email_pattern = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
         self.phone_pattern = re.compile(r"[\d\s\-\+\(\).]{7,}")
         self.passive_voice_pattern = re.compile(r'\b(am|is|are|was|were|been|being)\s+\w+ed\b', re.IGNORECASE)
@@ -101,8 +120,8 @@ class AtsScoringService:
         for data_key, display_name in sections_to_check.items():
             content = processed_resume_data.get(data_key)
             if content: # Checks for non-empty lists/dicts/strings, non-None
-                criteria_scores["section_completeness"]["score"] += points_per_section
-                present_sections.append(display_name)
+                 criteria_scores["section_completeness"]["score"] += points_per_section
+                 present_sections.append(display_name)
         criteria_scores["section_completeness"]["passed"] = present_sections
 
         # 2. Contact Info Quality
@@ -114,14 +133,14 @@ class AtsScoringService:
             phone = personal_data.get("phone")
             linkedin = personal_data.get("linkedin")
             if email and isinstance(email, str) and self.email_pattern.match(email):
-                contact_score += criteria_scores["contact_info_quality"]["max"] * 0.4
-                contact_details_found.append("Email (Valid Format)")
+                 contact_score += criteria_scores["contact_info_quality"]["max"] * 0.4
+                 contact_details_found.append("Email (Valid Format)")
             if phone and isinstance(phone, str) and self.phone_pattern.search(phone):
-                contact_score += criteria_scores["contact_info_quality"]["max"] * 0.4
-                contact_details_found.append("Phone (Found)")
+                 contact_score += criteria_scores["contact_info_quality"]["max"] * 0.4
+                 contact_details_found.append("Phone (Found)")
             if linkedin and isinstance(linkedin, str) and ('linkedin.com' in linkedin.lower()):
-                contact_score += criteria_scores["contact_info_quality"]["max"] * 0.2
-                contact_details_found.append("LinkedIn (Found)")
+                 contact_score += criteria_scores["contact_info_quality"]["max"] * 0.2
+                 contact_details_found.append("LinkedIn (Found)")
         criteria_scores["contact_info_quality"]["score"] = contact_score
         criteria_scores["contact_info_quality"]["passed"] = contact_details_found
 
@@ -167,9 +186,9 @@ class AtsScoringService:
             descriptions_raw = entry.get("description", [])
             descriptions = []
             if isinstance(descriptions_raw, str):
-                descriptions = [s.strip() for s in descriptions_raw.split('\n') if s.strip()]
+                 descriptions = [s.strip() for s in descriptions_raw.split('\n') if s.strip()]
             elif isinstance(descriptions_raw, list):
-                descriptions = [d for d in descriptions_raw if isinstance(d, str)]
+                 descriptions = [d for d in descriptions_raw if isinstance(d, str)]
 
             entry_has_desc = False
             if descriptions:
@@ -178,17 +197,35 @@ class AtsScoringService:
                      if desc.strip():
                          total_bullets += 1
                          desc_clean = desc.strip()
-                         first_word = desc_clean.split(" ")[0].lower().rstrip('.,:')
-                         if first_word in self.action_verbs_list: bullets_with_action_verbs += 1
+                         
+                         # --- START UPDATED ACTION VERB LOGIC ---
+                         desc_words = desc_clean.split(" ")
+                         first_word = ""
+                         if desc_words:
+                             first_word = desc_words[0].lower().rstrip('.,:')
+                         
+                         is_action_verb = False
+                         if first_word in self.action_verbs_set: # Use the fast set
+                             is_action_verb = True
+                         # Check second word if first is a common adverb
+                         elif (first_word in self.common_adverbs or (first_word.endswith('ly') and len(first_word) > 3)) and len(desc_words) > 1:
+                             second_word = desc_words[1].lower().rstrip('.,:')
+                             if second_word in self.action_verbs_set: # Use the fast set
+                                 is_action_verb = True
+                         
+                         if is_action_verb:
+                             bullets_with_action_verbs += 1
+                         # --- END UPDATED ACTION VERB LOGIC ---
+
                          if self.number_pattern.search(desc_clean): bullets_with_numbers += 1
                          if len(desc_clean) <= max_bullet_len_chars: concise_bullets += 1
                          if self.passive_voice_pattern.search(desc_clean): passive_voice_count += 1
                          if self.filler_words_pattern.search(desc_clean): filler_word_count += 1
 
             if entry_has_desc:
-                entries_with_desc += 1
-                entry_name = entry.get("jobTitle") or entry.get("projectName", "Entry")
-                criteria_scores["experience_details_present"]["passed"].append(entry_name)
+                 entries_with_desc += 1
+                 entry_name = entry.get("jobTitle") or entry.get("projectName", "Entry")
+                 criteria_scores["experience_details_present"]["passed"].append(entry_name)
 
             start_date = entry.get("start_date") or entry.get("startDate")
             end_date = entry.get("end_date") or entry.get("endDate")
@@ -298,6 +335,7 @@ class AtsScoringService:
             "Overall": [], "Structure & Sections": [], "Contact Info": [],
             "Profile Summary": [], "Keywords": [], "Experience & Projects": [],
             "Grammar & Style": [], "Education": []
+            # Removed "Bullet Conciseness" as a separate category, moved it under Grammar & Style
         }
         score_threshold_good = 85
         score_threshold_medium = 65
@@ -361,8 +399,7 @@ class AtsScoringService:
         if exp_score < exp_max:
              suggestions["Experience & Projects"].append("Ensure every work/project entry includes descriptive bullet points.")
 
-        # --- *** CORRECTED SECTION *** ---
-        # Retrieve values from criteria_scores dictionary
+        # Action Verbs (Experience & Projects)
         av_score = criteria_scores.get("action_verbs", {}).get("score", 0)
         av_max = criteria_scores.get("action_verbs", {}).get("max", 15)
         av_passed = criteria_scores.get("action_verbs", {}).get("passed", 0)
@@ -370,6 +407,7 @@ class AtsScoringService:
         if av_total > 0 and av_score < av_max * 0.7:
              suggestions["Experience & Projects"].append(f"Use strong action verbs (e.g., Managed, Developed) to start most ({max(1, av_total - av_passed)} more) bullet points.")
 
+        # Quantifiable Results (Experience & Projects)
         qr_score = criteria_scores.get("quantifiable_results", {}).get("score", 0)
         qr_max = criteria_scores.get("quantifiable_results", {}).get("max", 15)
         qr_passed = criteria_scores.get("quantifiable_results", {}).get("passed", 0)
@@ -377,16 +415,16 @@ class AtsScoringService:
         target_quant_bullets = max(1, int(qr_total * 0.35))
         if qr_total > 0 and qr_score < qr_max * 0.6:
              suggestions["Experience & Projects"].append(f"Quantify achievements more. Add numbers/metrics to showcase impact (aim for ~{target_quant_bullets} bullets).")
-        # --- *** END CORRECTED SECTION *** ---
 
         # Grammar & Style
-        # --- *** CORRECTED SECTION *** ---
+        
+        # --- Bullet Conciseness Suggestion (moved here) ---
         bc_score = criteria_scores.get("bullet_conciseness", {}).get("score", 0)
         bc_max = criteria_scores.get("bullet_conciseness", {}).get("max", 10)
-        bc_total = criteria_scores.get("bullet_conciseness", {}).get("total_bullets", 0)
+        bc_total = criteria_scores.get("bullet_conciseness", {}).get("total_bullets", 0) # Now defined before use
         if bc_total > 0 and bc_score < bc_max * 0.8:
-             suggestions["Grammar & Style"].append("Keep bullet points concise (ideally 1-2 lines) for easy scanning.")
-        # --- *** END CORRECTED SECTION *** ---
+             suggestions["Grammar & Style"].append("Keep bullet points concise (ideally 1-2 lines, under 170 characters) for easy scanning.")
+        # --- End Bullet Conciseness Suggestion ---
 
         grammar_score = criteria_scores.get("grammar_indicators", {}).get("score", 0)
         grammar_max = criteria_scores.get("grammar_indicators", {}).get("max", 5)
@@ -394,28 +432,28 @@ class AtsScoringService:
         filler_count = criteria_scores.get("grammar_indicators", {}).get("filler_count", 0)
         if grammar_score < grammar_max * 0.8:
             if passive_count > 0:
-                 suggestions["Grammar & Style"].append(f"Avoid passive voice ({passive_count} instance(s) found). Rephrase actively.")
+                 suggestions["Grammar & Style"].append(f"Avoid passive voice ({passive_count} instance(s) found). Rephrase actively (e.g., 'Managed team' instead of 'Team was managed').")
             if filler_count > 0:
-                 suggestions["Grammar & Style"].append(f"Replace weaker phrases like 'responsible for' ({filler_count} instance(s) found) with direct action verbs.")
+                 suggestions["Grammar & Style"].append(f"Replace weaker phrases like 'responsible for' or 'assisted with' ({filler_count} instance(s) found) with direct action verbs describing your contribution.")
 
         if not criteria_scores.get("date_consistency", {}).get("consistent", True):
-             suggestions["Grammar & Style"].append("Use a consistent date format (e.g., MM/YYYY or Month YYYY) throughout.")
+             suggestions["Grammar & Style"].append("Use a consistent date format (e.g., MM/YYYY or Month YYYY) throughout all sections (Experience, Education).")
 
         # Overall Feedback
         has_specific_suggestions = any(len(sug_list) > 0 for cat, sug_list in suggestions.items() if cat != "Overall")
 
         if final_score < score_threshold_medium :
-             suggestions["Overall"].append("This resume needs significant improvement for ATS compatibility. Focus on the suggestions provided.")
+             suggestions["Overall"].append("This resume needs significant improvement for ATS compatibility. Focus on the suggestions provided in each category.")
         elif final_score < score_threshold_good: # Medium score
              if has_specific_suggestions:
-                 suggestions["Overall"].append("Quite ATS-friendly. Addressing the specific suggestions can make it even stronger.")
+                 suggestions["Overall"].append("Good start! This resume is quite ATS-friendly. Addressing the specific suggestions can make it even stronger.")
              else:
-                 suggestions["Overall"].append("Good structure! Generally ATS-friendly. Minor tweaks could improve it further.")
+                 suggestions["Overall"].append("Good structure and content! Generally ATS-friendly. Minor tweaks could improve it further.")
         else: # Good score
              if has_specific_suggestions:
-                 suggestions["Overall"].append("Excellent score! Addressing the minor suggestions below will make it perfect.")
+                 suggestions["Overall"].append("Excellent score! Your resume aligns well with ATS best practices. Addressing the minor suggestions below will make it even better.")
              else:
-                 suggestions["Overall"].append("Excellent! Your resume follows many ATS best practices.")
+                 suggestions["Overall"].append("Excellent! Your resume follows ATS best practices effectively.")
 
 
         # Filter out empty categories
