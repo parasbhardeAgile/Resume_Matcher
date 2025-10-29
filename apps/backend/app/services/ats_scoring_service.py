@@ -91,7 +91,7 @@ class AtsScoringService:
     def calculate_ats_score(self, resume_id: str, processed_resume_data: Dict[str, Any], raw_text_content: str = "") -> Dict[str, Any]:
         """Calculates an ATS score with refined checks and returns structured suggestions."""
         logger.info(f"Calculating enhanced ATS score for resume_id: {resume_id}")
-
+        logger.info(f"Received processed_resume_data: {processed_resume_data}")
         if not processed_resume_data:
              return {"resume_id": resume_id, "ats_score": 0, "score_breakdown": {}, "suggestions": {"Overall": ["Processed resume data missing."]}}
 

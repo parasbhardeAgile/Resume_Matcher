@@ -14,6 +14,8 @@ from fastapi import (
     status,
     Query,
 )
+from typing import Dict, Any # ### NEW: Added for type hinting
+from pydantic import BaseModel, Field # ### NEW: Added for request body model
 
 from app.core import get_db_session
 from app.services import (
@@ -30,6 +32,16 @@ from app.services import (
 )
 from app.schemas.pydantic import ResumeImprovementRequest
 
+# ### NEW: Pydantic model for the /score request body ###
+class AtsScoreRequest(BaseModel):
+    """
+    This is the model for API 2 (POST /score).
+    The client will send this JSON in the request body.
+    """
+    resume_id: str = Field(..., description="The unique ID of the resume (from the client's DB)")
+    processed_resume_data: Dict[str, Any] = Field(..., description="The structured resume JSON fetched from the client's DB")
+
+
 resume_router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -44,11 +56,10 @@ async def upload_resume(
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Accepts a PDF or DOCX file (max 2MB), converts it to HTML/Markdown, and stores it in the database.
-
-    Raises:
-        HTTPException: If the file type is not supported, file is empty, or file exceeds 2MB limit.
+    (This is your original /upload endpoint, left as-is)
+    ...
     """
+# ... (existing code for /upload) ...
     request_id = getattr(request.state, "request_id", str(uuid4()))
 
     allowed_content_types = [
@@ -137,11 +148,10 @@ async def score_and_improve(
     ),
 ):
     """
-    Scores and improves a resume against a job description.
-
-    Raises:
-        HTTPException: If the resume or job is not found.
+    (This is your original /improve endpoint, left as-is)
+    ...
     """
+# ... (existing code for /improve) ...
     request_id = getattr(request.state, "request_id", str(uuid4()))
     headers = {"X-Request-ID": request_id}
 
@@ -235,17 +245,10 @@ async def get_resume(
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Retrieves resume data from both resume_model and processed_resume model by resume_id.
-
-    Args:
-        resume_id: The ID of the resume to retrieve
-
-    Returns:
-        Combined data from both resume and processed_resume models
-
-    Raises:
-        HTTPException: If the resume is not found or if there's an error fetching data.
+    (This is your original /get endpoint, left as-is)
+    ...
     """
+# ... (existing code for /get) ...
     request_id = getattr(request.state, "request_id", str(uuid4()))
     headers = {"X-Request-ID": request_id}
 
@@ -286,26 +289,29 @@ async def get_resume(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error fetching resume data",
         )
-    
+
+
+# ### NEW: API 1 - Parse Only (Stateless) ###
 @resume_router.post(
-    "/upload-and-score-ats", # New, specific path
-    summary="Upload resume, parse, calculate ATS score, return score immediately (DB-less).",
-    tags=["ATS Scoring"] # Optional: Add a tag for better OpenAPI docs grouping
+    "/parse",
+    summary="Upload resume, parse, and return structured JSON data.",
+    tags=["ATS Microservice"] 
 )
-async def upload_and_score_ats( # New function name
+async def parse_resume_stateless(
     request: Request,
     file: UploadFile = File(...),
-    # db: AsyncSession = Depends(get_db_session), # NO database dependency here
+    # NO database dependency here
 ):
     """
-    Accepts PDF/DOCX (max 2MB), converts to text, extracts structured data,
-    calculates an ATS score based on structure/content, and returns the score immediately.
-    Does NOT store data in the database.
+    API 1 (Stateless):
+    Accepts PDF/DOCX (max 2MB), parses it in-memory,
+    and returns the structured JSON data.
+    It does NOT store anything.
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-    logger.info(f"[{request_id}] Received request for ATS scoring: {file.filename}")
+    logger.info(f"[{request_id}] Received request for stateless parsing: {file.filename}")
 
-    # --- File Validation Logic (Keep as before) ---
+    # --- File Validation Logic (Copied from /upload-and-score-ats) ---
     allowed_content_types = [
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -326,64 +332,105 @@ async def upload_and_score_ats( # New function name
     # --- End File Validation Logic ---
 
     try:
-        # 1. Parse the resume (using the DB-less ResumeService)
-        # Instantiate ResumeService without db
-        resume_service = ResumeService()
+        # 1. Parse the resume (stateless)
+        resume_service = ResumeService() # Instantiate without db
         logger.info(f"[{request_id}] Parsing resume: {file.filename}")
-        # Call the refactored parse_resume method
+        
+        # Call the parse_resume method
         text_content, structured_data = await resume_service.parse_resume(
             file_bytes=file_bytes,
             file_type=file.content_type,
             filename=file.filename,
         )
-        # Check if structured_data is None (though parse_resume should raise error)
+        
         if structured_data is None:
-             logger.error(f"[{request_id}] Parsing returned None for structured_data unexpectedly.")
-             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to parse resume structure.")
+            logger.error(f"[{request_id}] Parsing returned None for structured_data unexpectedly.")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to parse resume structure.")
         logger.info(f"[{request_id}] Resume parsed successfully.")
 
-        # 2. Calculate ATS Score (using the DB-less AtsScoringService)
-        # Instantiate AtsScoringService without db
-        ats_scoring_service = AtsScoringService()
-        # Generate a temporary ID or use filename for context in response
-        temp_resume_id = f"upload_{file.filename}_{uuid.uuid4()}"
-        logger.info(f"[{request_id}] Calculating ATS score for {temp_resume_id}")
-        ats_result = ats_scoring_service.calculate_ats_score(
-            resume_id=temp_resume_id, # Pass a reference ID
-            processed_resume_data=structured_data # Pass the dictionary directly
-        )
-        logger.info(f"[{request_id}] ATS score calculated: {ats_result.get('ats_score')}")
-
-        # 3. Return the ATS score result directly
+        # 2. Return ONLY the parsed data
         return JSONResponse(
             content={
-                "message": f"File {file.filename} processed and ATS score calculated.",
+                "message": f"File {file.filename} parsed successfully.",
                 "request_id": request_id,
-                "ats_score_result": ats_result,
-                # Optionally add parsed_data if needed by frontend, but can be large
-                # "parsed_data": structured_data
+                "parsed_data": structured_data # This is what the client will store
             },
             status_code=status.HTTP_200_OK
         )
 
-    # --- Exception Handling (Keep similar, adjust details) ---
+    # 3. Exception Handling (Copied from /upload-and-score-ats)
     except ResumeValidationError as e:
         logger.warning(f"[{request_id}] Resume parsing/validation failed for {file.filename}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e), # The error from the service is already user-friendly
+            detail=str(e), 
         )
     except Exception as e:
         logger.error(
             f"[{request_id}] Error processing file {file.filename}: {str(e)} - traceback: {traceback.format_exc()}"
         )
-        # Check if it's a file conversion error we added custom messages for
         if "File conversion failed" in str(e) or "DOCX file processing failed" in str(e):
-             detail_msg = str(e) # Use the specific conversion error
+            detail_msg = str(e)
         else:
-             detail_msg = f"An unexpected error occurred while processing the resume. Please try again."
+            detail_msg = f"An unexpected error occurred while processing the resume. Please try again."
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail_msg,
         )
+
+
+# ### NEW: API 2 - Score Only (Stateless, from Request Body) ###
+@resume_router.post(
+    "/score",
+    summary="Calculate ATS score from provided structured resume data.",
+    tags=["ATS Microservice"]
+)
+async def score_resume_from_data_stateless(
+    request: Request,
+    payload: AtsScoreRequest, # Use the new Pydantic model
+):
+    """
+    API 2 (Stateless):
+    - Receives structured resume data *in the request body*.
+    - Calculates the ATS score using AtsScoringService.
+    - Returns the score.
+    - Does NOT store anything.
+    """
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    logger.info(f"[{request_id}] Requesting ATS score for resume ID: {payload.resume_id}")
+
+    try:
+        # 1. Instantiate the stateless AtsScoringService
+        ats_scoring_service = AtsScoringService()
+        
+        logger.info(f"[{request_id}] Calculating ATS score for {payload.resume_id}")
+        
+        # 2. Calculate the score using the data from the request body
+        ats_result = ats_scoring_service.calculate_ats_score(
+            resume_id=payload.resume_id, # Pass the ID from the payload
+            processed_resume_data=payload.processed_resume_data # Pass the JSON from the payload
+        )
+        
+        logger.info(f"[{request_id}] ATS score calculated: {ats_result.get('ats_score')}")
+
+        # 3. Return the ATS score result
+        return JSONResponse(
+            content={
+                "message": "ATS score calculated successfully from provided data.",
+                "request_id": request_id,
+                "resume_id": payload.resume_id,
+                "ats_score_result": ats_result,
+            },
+            status_code=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Error scoring resume {payload.resume_id}: {str(e)} - traceback: {traceback.format_exc()}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while calculating the score.",
+        )
+
