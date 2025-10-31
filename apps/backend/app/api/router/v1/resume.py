@@ -29,10 +29,10 @@ from app.services import (
     ResumeKeywordExtractionError,
     JobKeywordExtractionError,
     AtsScoringService,
+    AiAtsScoringService,
 )
 from app.schemas.pydantic import ResumeImprovementRequest
 
-# ### NEW: Pydantic model for the /score request body ###
 class AtsScoreRequest(BaseModel):
     """
     This is the model for API 2 (POST /score).
@@ -380,7 +380,7 @@ async def parse_resume_stateless(
         )
 
 
-# ### NEW: API 2 - Score Only (Stateless, from Request Body) ###
+# ### NEW: API 2 - Score Only Manual logic (Stateless) ###
 @resume_router.post(
     "/score",
     summary="Calculate ATS score from provided structured resume data.",
@@ -434,3 +434,54 @@ async def score_resume_from_data_stateless(
             detail="An unexpected error occurred while calculating the score.",
         )
 
+### NEW: API 2 - Score Only AI logic (Stateless) ###
+
+@resume_router.post(
+    "/ai-score",
+    summary="Calculate ATS score from provided structured resume data.",
+    tags=["ATS Microservice"]
+)
+async def score_resume_from_data_stateless(
+    request: Request,
+    payload: AtsScoreRequest, # Use the new Pydantic model
+):
+    """
+    API 2 (Stateless):
+    - Receives structured resume data *in the request body*.
+    - Calculates the ATS score using AiAtsScoringService.  <-- UPDATED
+    - Returns the score.
+    - Does NOT store anything.
+    """
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    logger.info(f"[{request_id}] Requesting AI ATS score for resume ID: {payload.resume_id}")
+
+    try:
+        ai_scoring_service = AiAtsScoringService() # <-- UPDATED
+        
+        logger.info(f"[{request_id}] Calculating AI ATS score for {payload.resume_id}")
+        
+        ats_result = await ai_scoring_service.get_ai_ats_score( # <-- UPDATED (and added await)
+            processed_resume_data=payload.processed_resume_data # Pass the JSON from the payload
+        )
+        
+        logger.info(f"[{request_id}] AI ATS score calculated: {ats_result.get('ats_score')}")
+
+        # 3. Return the ATS score result
+        return JSONResponse(
+            content={
+                "message": "AI ATS score calculated successfully from provided data.",
+                "request_id": request_id,
+                "resume_id": payload.resume_id,
+                "ats_score_result": ats_result,
+            },
+            status_code=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Error scoring resume {payload.resume_id}: {str(e)} - traceback: {traceback.format_exc()}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while calculating the score.",
+        )

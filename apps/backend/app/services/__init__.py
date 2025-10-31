@@ -11,7 +11,7 @@ from .exceptions import (
     JobKeywordExtractionError,
 )
 from .ats_scoring_service import AtsScoringService
-
+from .ai_ats_scoring_service import AiAtsScoringService 
 __all__ = [
     "JobService",
     "ResumeService",
@@ -24,4 +24,5 @@ __all__ = [
     "JobKeywordExtractionError",
     "ScoreImprovementService",
     "AtsScoringService",
+    "AiAtsScoringService",
 ]
